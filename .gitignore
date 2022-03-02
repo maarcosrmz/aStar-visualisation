@@ -33,3 +33,5 @@
 
 bin/
 .vimspector.json
+
+imgui.ini
