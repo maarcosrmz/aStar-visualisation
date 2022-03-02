@@ -1,14 +1,25 @@
-CFLAGS = -std=c++17 -O2 -ggdb
-LDFLAGS = #-lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
-LDFLAGS = `sdl2-config --cflags --libs` -lSDL2
+CXXFLAGS = -std=c++17
+LDXXFLAGS = `sdl2-config --cflags --libs` -lSDL2 -pthread
 
-bin/A-Star: src/*.cpp src/*.hpp
-	mkdir bin && g++ $(CFLAGS) -o ./bin/A-Star src/*.cpp $(LDFLAGS)
+BIN = bin/A-Star
+SRC = src/*.cpp src/**/*.cpp
 
-.PHONY: test clean
+.PHONY: all run debug release clean
 
-test: bin/A-Star 
-	./bin/A-Star
+all: exec run clean
+
+exec: $(SRC) src/*.hpp src/**/*.h
+	mkdir bin && \
+	$(CXX) $(CXXFLAGS) -o $(BIN) $(SRC) $(LDXXFLAGS)
+
+run: $(BIN)
+	./$?
+
+debug: CXXFLAGS += -ggdb
+debug: exec
+
+release: CXXFLAGS += -O3
+release: exec
 
 clean:
 	rm -rf bin
