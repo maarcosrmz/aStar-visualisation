@@ -4,9 +4,11 @@
 #include <iostream>
 #include <utility>
 #include <set>
+#include <stack>
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <functional>
 #include <algorithm>
 #include <thread>
 

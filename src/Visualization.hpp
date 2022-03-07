@@ -9,10 +9,7 @@
 
 #include "Util.hpp"
 #include "AStar.hpp"
-
-#if !SDL_VERSION_ATLEAST(2,0,17)
-#error This backend requires SDL 2.0.17+ because of SDL_RenderGeometry() function
-#endif
+#include "EditStack.hpp"
 
 class Visualization {
 
@@ -32,6 +29,9 @@ class Visualization {
         i32 menu_bar_height;
         ImVec4 background_color;
 
+        std::pair<std::vector<std::pair<i32, i32>>, short> stack_pair;
+        EditStack edit_stack;
+
         // Init
         void InitSdl();
         void InitImGui();
@@ -49,11 +49,17 @@ class Visualization {
         void RunMenu();
         void GridMenu();
         void ColorMenu();
+        void AboutMenu();
 
         // Events
         void OnMouseButtonDown(const SDL_Event& e);
         void OnMouseButtonUp(const SDL_Event& e);
         void OnMouseMotion(const SDL_Event& e);
+        void OnKeyDown(const SDL_Event& e);
+
+        // Undo / Redo Operations Methods 
+        void OnUndo();
+        void OnRedo();
 
         // Draw 
         void DrawGrid();

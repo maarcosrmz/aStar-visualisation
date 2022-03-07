@@ -8,6 +8,8 @@ Visualization::Visualization()
     aStar.setSelected(NONE);
     aStar.setDelay(50);
 
+    float color = 70.0f / 255.0f;
+    background_color = {color, color, color, 1.0f};
     menu_bar_height = 0;
 
     InitSdl();
@@ -95,6 +97,10 @@ void Visualization::Input()
                 OnMouseMotion(e); 
                 break;
 
+            case SDL_KEYDOWN:
+                OnKeyDown(e);
+                break;
+
             default:
                 break;
         };
@@ -137,6 +143,7 @@ void Visualization::MenuBar()
         RunMenu();
         GridMenu();
         ColorMenu();
+        AboutMenu();
         ImGui::EndMainMenuBar();
     }
 }
@@ -175,8 +182,17 @@ void Visualization::EditMenu()
     if (ImGui::BeginMenu("Edit")) {
         menu_open = true;
 
-        if (ImGui::MenuItem("Undo", "Ctrl+Z")) {}
-        if (ImGui::MenuItem("Redo", "Ctrl+Y")) {}
+        ImGui::BeginDisabled(!aStar.stateEditing() || edit_stack.getUndoSize() == 0);
+        if (ImGui::MenuItem("Undo", "Ctrl+Z")) {
+            OnUndo(); 
+        }
+        ImGui::EndDisabled();
+
+        ImGui::BeginDisabled(!aStar.stateEditing() || edit_stack.getRedoSize() == 0);
+        if (ImGui::MenuItem("Redo", "Ctrl+Y")) {
+            OnRedo();
+        }
+        ImGui::EndDisabled();
 
         ImGui::EndMenu();
     }
@@ -187,9 +203,11 @@ void Visualization::RunMenu()
     if (ImGui::BeginMenu("Run")) {
         menu_open = true;
         
+        ImGui::BeginDisabled(!aStar.stateEditing());
         if (ImGui::MenuItem("Run", "Ctrl+R")) {
             aStar.startSimulation();
         }
+        ImGui::EndDisabled();
 
         std::string label;
         if (aStar.getState() == SIMULATING) {
@@ -198,6 +216,7 @@ void Visualization::RunMenu()
             label = "Finish";
         }
 
+        ImGui::BeginDisabled(aStar.stateEditing());
         if (ImGui::MenuItem(label.c_str(), "Ctrl+A")) {
             if (aStar.getState() == SIMULATING) {
                 aStar.setState(FINISHED);
@@ -205,6 +224,7 @@ void Visualization::RunMenu()
                 aStar.setState(EDITING);
             }
         }
+        ImGui::EndDisabled();
 
         ImGui::Separator();
 
@@ -241,9 +261,11 @@ void Visualization::GridMenu()
             ImGui::EndMenu();
         }
 
+        ImGui::BeginDisabled(!aStar.stateEditing());
         if (ImGui::MenuItem("Clear Obstacles", "Ctrl+D")) {
             aStar.clearObstacles();
         }
+        ImGui::EndDisabled();
 
         bool show = aStar.gridIsShown();
         ImGui::Checkbox("Show", &show);
@@ -281,6 +303,21 @@ void Visualization::ColorMenu()
     }
 }
 
+void Visualization::AboutMenu()
+{
+    if (ImGui::BeginMenu("About")) {
+        ImGui::Text("Made by:\n Marcos Leonardo Ramirez Joos");
+
+        ImGui::Separator(); 
+
+        if (ImGui::BeginMenu("Instructions")) { 
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenu();
+    }
+}
+
 void Visualization::OnMouseButtonDown(const SDL_Event& e)
 {
     if (!menu_open 
@@ -293,24 +330,39 @@ void Visualization::OnMouseButtonDown(const SDL_Event& e)
         auto mouse_pos = aStar.mouseGetOver(x, y - menu_bar_height);
         auto obstacles = aStar.getObstacles();
 
+        stack_pair.first = {mouse_pos};
         if (mouse_pos == aStar.getTarget()) {
             aStar.setSelected(TARGET);
+            stack_pair.second = MOVE_TARGET;
         } else if (mouse_pos == aStar.getStart()) {
             aStar.setSelected(START);
+            stack_pair.second = MOVE_START;
         } else if (obstacles.find(mouse_pos) != obstacles.end()) {
             aStar.setSelected(OBSTACLE);
             aStar.removeObstacle(mouse_pos);
+            stack_pair.second = DELETE_OBST;
         } else {
             aStar.setSelected(BLANCK);
             aStar.addObstacle(mouse_pos);
+            stack_pair.second = INSERT_OBST;
         }
     }
 }
 
 void Visualization::OnMouseButtonUp(const SDL_Event& e)
 {
-    if (aStar.getSelected() != NONE && e.button.button == SDL_BUTTON_LEFT) {
+    int x, y;
+    SDL_GetMouseState(&x, &y);
+    auto mouse_pos = aStar.mouseGetOver(x, y - menu_bar_height);
+
+    if (!menu_open && aStar.getSelected() != NONE && e.button.button == SDL_BUTTON_LEFT) {
         aStar.setSelected(NONE);
+
+        if (stack_pair.second == MOVE_START || stack_pair.second == MOVE_TARGET) {
+            stack_pair.first.push_back(mouse_pos);
+        }
+
+        edit_stack.WriteStack(stack_pair.first, stack_pair.second);
     }
 }
 
@@ -331,9 +383,108 @@ void Visualization::OnMouseMotion(const SDL_Event& e)
             aStar.setTarget(mouse_pos);
         } else if (aStar.getSelected() == OBSTACLE && !mouse_on_other_tile) {
             aStar.removeObstacle(mouse_pos);
+            stack_pair.first.push_back(mouse_pos);
         } else if (aStar.getSelected() == BLANCK && !mouse_on_other_tile) {
-            aStar.addObstacle(mouse_pos);
+            bool added = false;
+            for (const auto& p : stack_pair.first) {
+                if (p == mouse_pos) {
+                    added = true;
+                }
+            }
+
+            auto obsts = aStar.getObstacles();
+            if (obsts.find(mouse_pos) == obsts.end() && !added) {
+                aStar.addObstacle(mouse_pos);
+                stack_pair.first.push_back(mouse_pos);
+            }
         }
+    }
+}
+
+void Visualization::OnKeyDown(const SDL_Event& e)
+{
+    auto mod = e.key.keysym.mod;
+    auto key = e.key.keysym.sym;
+
+    if (mod & KMOD_LCTRL || mod & KMOD_RCTRL) {
+        switch (key) {
+            case SDLK_r:
+                aStar.startSimulation();
+                break;
+
+            case SDLK_a:
+                if (aStar.getState() == SIMULATING) {
+                    aStar.setState(FINISHED);
+                } else {
+                    aStar.setState(EDITING);
+                }
+                break;
+
+            case SDLK_d:
+                aStar.clearObstacles();
+                break;
+
+            case SDLK_z:
+                if (edit_stack.getUndoSize() > 0) OnUndo();
+                break;
+
+            case SDLK_y:
+                if (edit_stack.getRedoSize() > 0) OnRedo();
+                break;
+        }
+    }
+}
+
+void Visualization::OnUndo()
+{
+    short op;
+    auto data = edit_stack.Undo(&op);
+
+    switch (op) {
+        case MOVE_START:
+            aStar.setStart(data[0]);
+            break;
+
+        case MOVE_TARGET:
+            aStar.setTarget(data[0]);
+            break;
+
+        case INSERT_OBST:
+            for (const auto& p : data) {
+                aStar.removeObstacle(p);
+            }
+            break;
+
+        case DELETE_OBST:
+            aStar.addObstacle(data);
+            break;
+    }
+}
+
+void Visualization::OnRedo()
+{
+    short op;
+    auto data = edit_stack.Redo(&op);
+
+    switch (op) {
+        case MOVE_START:
+            aStar.setStart(data[1]);
+            break;
+
+        case MOVE_TARGET:
+            aStar.setTarget(data[1]);
+            break;
+
+        case INSERT_OBST:
+            aStar.addObstacle(data);
+            break;
+
+        case DELETE_OBST:
+            for (const auto& p : data) {
+                aStar.removeObstacle(p);
+            }
+            break;
+            
     }
 }
 

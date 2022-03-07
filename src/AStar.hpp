@@ -75,19 +75,23 @@ class AStar {
 
         // A* Algorithm
         void startSimulation();
+        
+        // State
+        bool stateEditing() const;
 
         // Dimensions
         void calcDeltaLength(i32 win_w, i32 win_h);
 
         // Obstacles
         void addObstacle(const std::pair<i32, i32>& new_obst);
+        void addObstacle(const std::vector<std::pair<i32, i32>>& obst);
         void removeObstacle(const std::pair<i32, i32>& obst);
         void clearObstacles();
 
         // Mouse
-        std::pair<i32, i32> mouseGetOver(i32 x_mouse, i32 y_mouse);
-        bool mouseOutOfBounds(std::pair<i32, i32> mouse_pos);
-        bool mouseOnOtherTile(std::pair<i32, i32> mouse_pos, short selected);
+        std::pair<i32, i32> mouseGetOver(i32 x_mouse, i32 y_mouse) const;
+        bool mouseOutOfBounds(std::pair<i32, i32> mouse_pos) const;
+        bool mouseOnOtherTile(std::pair<i32, i32> mouse_pos, short selected) const;
 
         // Setters
         void showGrid();
@@ -137,7 +141,7 @@ class AStar {
             getObstacleColor() const { return obstacle_color; }
         inline ImVec4 
             getGridColor() const { return grid_color; }
-        inline std::set<std::pair<i32, std::pair<i32, i32>>> 
+        inline std::set<std::pair<i32, std::pair<i32, i32>>>
             getOpenSet() const { return openSet; };
         inline std::unordered_set<std::pair<i32, i32>, pair_hash> 
             getClosedSet() const { return closedSet; };

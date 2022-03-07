@@ -2,10 +2,13 @@
 
 AStar::AStar()
 {
-    start_color = {1.0f, 0.0f, 0.0f, 1.0f};
-    target_color = {0.0f, 0.0f, 1.0f, 1.0f};
-    obstacle_color = {0.0f, 1.0f, 0.0f, 1.0f};
-    grid_color = {1.0f, 1.0f, 1.0f, 1.0f};
+    float sec  =  50.0f / 255.0f;
+    float prim = 175.0f / 255.0f;
+
+    start_color    = {prim,  sec,  sec, 1.0f};
+    obstacle_color = { sec, prim,  sec, 1.0f};
+    target_color   = { sec,  sec, prim, 1.0f};
+    grid_color     = {0.0f, 0.0f, 0.0f, 1.0f};
 
     state = EDITING;
 
@@ -22,10 +25,13 @@ AStar::AStar(
     this->start  = start;
     this->target = target;
 
-    start_color = {1.0f, 0.0f, 0.0f, 1.0f};
-    target_color = {0.0f, 0.0f, 1.0f, 1.0f};
-    obstacle_color = {0.0f, 1.0f, 0.0f, 1.0f};
-    grid_color = {1.0f, 1.0f, 1.0f, 1.0f};
+    float sec  =  50.0f / 255.0f;
+    float prim = 175.0f / 255.0f;
+
+    start_color    = {prim,  sec,  sec, 1.0f};
+    obstacle_color = { sec, prim,  sec, 1.0f};
+    target_color   = { sec,  sec, prim, 1.0f};
+    grid_color     = {0.0f, 0.0f, 0.0f, 1.0f};
 
     state = EDITING;
 
@@ -43,6 +49,10 @@ AStar::~AStar()
 
 void AStar::aStarPathfinding()
 {
+    // Tie braker: 
+    // https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#breaking-ties
+    float p = 0.2; 
+
     std::unordered_map<std::pair<i32, i32>, i32, pair_hash> gScore;
     std::unordered_map<std::pair<i32, i32>, i32, pair_hash> fScore;
 
@@ -69,7 +79,7 @@ void AStar::aStarPathfinding()
                 continue;
             } else if (fScore.find(square) == fScore.end()) {
                 gScore[square] = gScore[current] + heuristic(current, square);
-                fScore[square] = gScore[square] + heuristic(square, target);
+                fScore[square] = gScore[square]  + heuristic(square, target) * (1.0f + p);
                 parents[square] = current;
 
                 openSet.insert(std::pair<i32, std::pair<i32, i32>>(fScore[square], square));
@@ -79,7 +89,7 @@ void AStar::aStarPathfinding()
                     openSet.erase(std::pair<i32, std::pair<i32, i32>>(fScore[square], square)); 
 
                     gScore[square] = new_gScore;
-                    fScore[square] = gScore[square] + heuristic(square, target);
+                    fScore[square] = gScore[square] + heuristic(square, target) * (1.0f * p);
                     parents[square] = current;
 
                     openSet.insert(std::pair<i32, std::pair<i32, i32>>(fScore[square], square)); 
@@ -124,15 +134,20 @@ std::vector<std::pair<i32, i32>> AStar::getAdjacentSquares(
 }
 
 i32 AStar::heuristic(const std::pair<i32, i32> &a, const std::pair<i32, i32> &b) {
-    i32 dx = abs(static_cast<i32>(a.first)  - static_cast<i32>(b.first));
-    i32 dy = abs(static_cast<i32>(a.second) - static_cast<i32>(b.second));
-
+    i32 dx = abs(a.first  - b.first);
+    i32 dy = abs(a.second - b.second);
+    
     return 10 * (dx + dy);
 }
 
 void AStar::addObstacle(const std::pair<i32, i32>& new_obst)
 {
     obstacle_tiles.insert(new_obst);
+}
+
+void AStar::addObstacle(const std::vector<std::pair<i32, i32>>& obst)
+{
+    obstacle_tiles.insert(obst.begin(), obst.end());
 }
 
 void AStar::removeObstacle(const std::pair<i32, i32>& obst)
@@ -160,6 +175,15 @@ void AStar::startSimulation()
     sim_thread = nullptr;
 }
 
+bool AStar::stateEditing() const 
+{
+    if (state == EDITING) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void AStar::calcDeltaLength(i32 win_w, i32 win_h)
 {
     i32 dx = win_w / dimensions.first;
@@ -182,7 +206,7 @@ void AStar::hideGrid()
     show_grid = false;
 }
 
-std::pair<i32, i32> AStar::mouseGetOver(i32 x_mouse, i32 y_mouse)
+std::pair<i32, i32> AStar::mouseGetOver(i32 x_mouse, i32 y_mouse) const
 {
     std::pair<i32, i32> mouse_grid_pos = {-1, -1};
 
@@ -198,7 +222,7 @@ std::pair<i32, i32> AStar::mouseGetOver(i32 x_mouse, i32 y_mouse)
     return mouse_grid_pos;
 }
 
-bool AStar::mouseOutOfBounds(std::pair<i32, i32> mouse_pos)
+bool AStar::mouseOutOfBounds(std::pair<i32, i32> mouse_pos) const
 {
     bool not_on_grid_x = mouse_pos.first  < 0 || mouse_pos.first  >= dimensions.first;
     bool not_on_grid_y = mouse_pos.second < 0 || mouse_pos.second >= dimensions.second;
@@ -210,7 +234,7 @@ bool AStar::mouseOutOfBounds(std::pair<i32, i32> mouse_pos)
     return false;
 }
 
-bool AStar::mouseOnOtherTile(std::pair<i32, i32> mouse_pos, short selected)
+bool AStar::mouseOnOtherTile(std::pair<i32, i32> mouse_pos, short selected) const
 {
     bool mouse_obst = obstacle_tiles.find(mouse_pos) != obstacle_tiles.end();
 
