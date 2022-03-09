@@ -54,6 +54,10 @@ void Visualization::InitSdl()
     if (renderer == nullptr) {
         throw std::runtime_error("Could not create renderer!");
     }
+
+    SDL_Surface* icon = IMG_Load("res/aStar.png");
+    SDL_SetWindowIcon(window, icon);
+    SDL_FreeSurface(icon);
 }
 
 void Visualization::InitImGui()
@@ -72,7 +76,6 @@ void Visualization::InitImGui()
     ImGui_ImplSDLRenderer_Init(renderer);
 }
 
-// NOTE: Add Keyboard Shortcuts
 void Visualization::Input()
 {
     SDL_Event e;
@@ -127,7 +130,7 @@ void Visualization::Render()
             (Uint8)(background_color.w * 255));
     SDL_RenderClear(renderer);
 
-    DrawGrid();
+    DrawAStar();
 
     ImGui_ImplSDLRenderer_RenderDrawData(ImGui::GetDrawData());
     SDL_RenderPresent(renderer);
@@ -138,12 +141,10 @@ void Visualization::MenuBar()
     menu_open = false;
     if (ImGui::BeginMainMenuBar()) {
         ResizeWindow();
-        FileMenu();
         EditMenu();
         RunMenu();
         GridMenu();
         ColorMenu();
-        AboutMenu();
         ImGui::EndMainMenuBar();
     }
 }
@@ -156,24 +157,6 @@ void Visualization::ResizeWindow()
     menu_bar_height = ImGui::GetWindowSize().y;
     if (win_h != menu_bar_height + HEIGHT) {
         SDL_SetWindowSize(window, WIDTH, menu_bar_height + HEIGHT);
-    }
-}
-
-void Visualization::FileMenu() 
-{
-    if (ImGui::BeginMenu("File")) {
-        menu_open = true;
-
-        if (ImGui::MenuItem("New", "Ctrl+N")) {}
-        if (ImGui::MenuItem("Open", "Ctrl+O")) {}
-        if (ImGui::MenuItem("Save", "Ctrl+S")) {}
-        if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) {}
-
-        ImGui::Separator();
-
-        if (ImGui::MenuItem("Quit", "Alt+F4")) { running = false; }
-
-        ImGui::EndMenu();
     }
 }
 
@@ -263,6 +246,10 @@ void Visualization::GridMenu()
 
         ImGui::BeginDisabled(!aStar.stateEditing());
         if (ImGui::MenuItem("Clear Obstacles", "Ctrl+D")) {
+            auto obsts = aStar.getObstacles();
+            std::vector<std::pair<i32, i32>> data(obsts.begin(), obsts.end());
+            edit_stack.WriteStack(data, DELETE_OBST);
+
             aStar.clearObstacles();
         }
         ImGui::EndDisabled();
@@ -297,22 +284,19 @@ void Visualization::ColorMenu()
         ImGui::ColorEdit3("Grid", (float*)&color);
         aStar.setGridColor(color);
 
+        color = aStar.getOpenColor();
+        ImGui::ColorEdit3("Open Set", (float*)&color);
+        aStar.setOpenColor(color);
+
+        color = aStar.getClosedColor();
+        ImGui::ColorEdit3("Closed Set", (float*)&color);
+        aStar.setClosedColor(color);
+
         ImGui::ColorEdit3("Background", (float*)&background_color);
 
-        ImGui::EndMenu();
-    }
-}
-
-void Visualization::AboutMenu()
-{
-    if (ImGui::BeginMenu("About")) {
-        ImGui::Text("Made by:\n Marcos Leonardo Ramirez Joos");
-
-        ImGui::Separator(); 
-
-        if (ImGui::BeginMenu("Instructions")) { 
-            ImGui::EndMenu();
-        }
+        bool isStatic = aStar.closedColorIsStatic();
+        ImGui::Checkbox("Static Closed Set Color", &isStatic);
+        aStar.setClosedColorStatic(isStatic);
 
         ImGui::EndMenu();
     }
@@ -355,7 +339,7 @@ void Visualization::OnMouseButtonUp(const SDL_Event& e)
     SDL_GetMouseState(&x, &y);
     auto mouse_pos = aStar.mouseGetOver(x, y - menu_bar_height);
 
-    if (!menu_open && aStar.getSelected() != NONE && e.button.button == SDL_BUTTON_LEFT) {
+    if (aStar.getSelected() != NONE && e.button.button == SDL_BUTTON_LEFT) {
         aStar.setSelected(NONE);
 
         if (stack_pair.second == MOVE_START || stack_pair.second == MOVE_TARGET) {
@@ -389,6 +373,7 @@ void Visualization::OnMouseMotion(const SDL_Event& e)
             for (const auto& p : stack_pair.first) {
                 if (p == mouse_pos) {
                     added = true;
+                    break;
                 }
             }
 
@@ -488,12 +473,20 @@ void Visualization::OnRedo()
     }
 }
 
-void Visualization::DrawGrid()
+void Visualization::DrawAStar()
+{
+    i32 dl = (i32)aStar.getDeltaLength();
+
+    DrawObstacles(dl);
+    DrawState(dl);
+    DrawStartTarget(dl);
+    DrawGrid(dl);
+}
+
+void Visualization::DrawObstacles(i32 dl)
 {
     ImVec4 color;
     SDL_Rect rect;
-
-    i32 dl = (i32)aStar.getDeltaLength();
 
     // Draw Obstacles
     color = aStar.getObstacleColor();
@@ -508,21 +501,48 @@ void Visualization::DrawGrid()
         rect = {obstacle.first * dl, menu_bar_height + obstacle.second * dl, dl, dl};
         SDL_RenderFillRect(renderer, &rect);
     }
+}
+
+void Visualization::DrawState(i32 dl)
+{
+    ImVec4 color;
+    SDL_Rect rect;
 
     // Draw Current State Of A*
     short state = aStar.getState();
     if (state == SIMULATING || state == FINISHED) {
         auto openSet   = aStar.getOpenSet();
         auto closedSet = aStar.getClosedSet();
+        auto fScore    = aStar.getFScore();
 
-        SDL_SetRenderDrawColor(renderer, 0, 255, 255, 255);
+        color = aStar.getOpenColor();
+        SDL_SetRenderDrawColor(renderer, 
+                (Uint8)(color.x * 255), 
+                (Uint8)(color.y * 255), 
+                (Uint8)(color.z * 255), 
+                (Uint8)(color.w * 255));
+
         for (const auto& tile : openSet) {
             rect = {tile.second.first * dl, menu_bar_height + tile.second.second * dl, dl, dl};
             SDL_RenderFillRect(renderer, &rect);
         }
 
-        SDL_SetRenderDrawColor(renderer, 255, 255, 0, 255);
         for (const auto& tile : closedSet) {
+            if (aStar.closedColorIsStatic()) {
+                color = aStar.getClosedColor();
+            } else {
+                color = HSL2RGB(
+                        (fScore[tile] / aStar.getScalar()) % 360, 
+                        1.0f, 
+                        0.5f);
+            }
+
+            SDL_SetRenderDrawColor(renderer, 
+                    (Uint8)(color.x * 255), 
+                    (Uint8)(color.y * 255), 
+                    (Uint8)(color.z * 255), 
+                    (Uint8)(color.w * 255));
+
             rect = {tile.first * dl, menu_bar_height + tile.second * dl, dl, dl};
             SDL_RenderFillRect(renderer, &rect);
         }
@@ -531,12 +551,31 @@ void Visualization::DrawGrid()
     // Draw A* Result
     if (state == FINISHED) {
         auto final_path = aStar.getFinalPath();
-        SDL_SetRenderDrawColor(renderer, 255, 0, 255, 255);
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        
+        std::pair<i32, i32> previous = {-1, -1};
         for (const auto& tile : final_path) {
-            rect = {tile.first * dl, menu_bar_height + tile.second * dl, dl, dl};
-            SDL_RenderFillRect(renderer, &rect);
+            if (previous == std::pair<i32, i32>(-1, -1)) {
+                previous = tile;
+                continue;
+            }
+
+            SDL_RenderDrawLine(renderer, 
+                    previous.first  * dl + dl / 2, 
+                    previous.second * dl + dl / 2 + menu_bar_height,
+                    tile.first  * dl + dl / 2, 
+                    tile.second * dl + dl / 2 + menu_bar_height
+                    );
+
+            previous = tile;
         }
     }
+}
+
+void Visualization::DrawStartTarget(i32 dl)
+{
+    ImVec4 color;
+    SDL_Rect rect;
 
     // Draw Start/Target
     auto start  = aStar.getStart();
@@ -563,6 +602,12 @@ void Visualization::DrawGrid()
 
     rect = {target.first * dl, menu_bar_height + target.second * dl, dl, dl};
     SDL_RenderFillRect(renderer, &rect);
+}
+
+void Visualization::DrawGrid(i32 dl)
+{
+    ImVec4 color;
+    SDL_Rect rect;
 
     // Draw Grid
     if (aStar.gridIsShown()) {
@@ -599,4 +644,47 @@ void Visualization::run()
         Update();
         Render();
     }
+}
+
+ImVec4 HSL2RGB(double h, double s, double l)
+{
+    // Formula From: https://dystopiancode.blogspot.com/2012/06/hsl-rgb-conversion-algorithms-in-c.html
+
+    double r, g, b;
+    r = g = b = 0;
+
+    double c, x, m;
+
+    c = (1.0f - fabs(2.0f * l - 1.0f)) * s;
+    x = c * (1.0f - fabs(fmod(h / 60.0f, 2) - 1.0f));
+    m = l - c * 0.5f;
+
+    if (0 <= h && h < 60.0f) {
+        r = c;
+        g = x;
+    } else if (60.0f <= h && h < 120.0f) {
+        r = x;
+        g = c;
+    } else if (120.0f <= h && h < 180.0f) {
+        g = c;
+        b = x;
+    } else if (180.0f <= h && h < 240.0f) {
+        g = x;
+        b = c;
+    } else if (240.0f <= h && h < 300.0f) {
+        r = x;
+        b = c;
+    } else {
+        r = c;
+        b = x;
+    }
+
+    ImVec4 color = {
+        static_cast<float>(r + m), 
+        static_cast<float>(g + m), 
+        static_cast<float>(b + m), 
+        1.0f
+    };
+    
+    return color;
 }

@@ -28,7 +28,7 @@ class AStar {
 
     private:
         // Attributes
-        bool show_grid;
+        bool show_grid = true;
         
         short state;
         short selected;
@@ -47,12 +47,18 @@ class AStar {
         std::set<std::pair<i32, std::pair<i32, i32>>> openSet;
         std::unordered_set<std::pair<i32, i32>, pair_hash> closedSet;
 
+        std::unordered_map<std::pair<i32, i32>, i32, pair_hash> fScore;
+
         std::vector<std::pair<i32, i32>> final_path;
 
         ImVec4 start_color;
         ImVec4 target_color;
         ImVec4 obstacle_color;
         ImVec4 grid_color;
+        ImVec4 open_color;
+        ImVec4 closed_color;
+
+        bool static_closedColor = true;
 
         std::thread* sim_thread;
 
@@ -109,6 +115,9 @@ class AStar {
         void setTargetColor(ImVec4 target_color);
         void setObstacleColor(ImVec4 obstacle_color);
         void setGridColor(ImVec4 grid_color);
+        void setOpenColor(ImVec4 open_color);
+        void setClosedColor(ImVec4 closed_color);
+        void setClosedColorStatic(bool isStatic);
 
         // Getters
         inline short
@@ -140,11 +149,20 @@ class AStar {
         inline ImVec4 
             getObstacleColor() const { return obstacle_color; }
         inline ImVec4 
+            getOpenColor() const { return open_color; }
+        inline ImVec4 
+            getClosedColor() const { return closed_color; }
+        inline bool 
+            closedColorIsStatic() const { return static_closedColor; }
+        inline ImVec4 
             getGridColor() const { return grid_color; }
         inline std::set<std::pair<i32, std::pair<i32, i32>>>
-            getOpenSet() const { return openSet; };
+            getOpenSet() const { return openSet; }
         inline std::unordered_set<std::pair<i32, i32>, pair_hash> 
-            getClosedSet() const { return closedSet; };
+            getClosedSet() const { return closedSet; }
+        inline std::unordered_map<std::pair<i32, i32>, i32, pair_hash> 
+            getFScore() const { return fScore; }
+
 };
 
 #endif //GRID_HPP

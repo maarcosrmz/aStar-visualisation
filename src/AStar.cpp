@@ -9,12 +9,11 @@ AStar::AStar()
     obstacle_color = { sec, prim,  sec, 1.0f};
     target_color   = { sec,  sec, prim, 1.0f};
     grid_color     = {0.0f, 0.0f, 0.0f, 1.0f};
+    open_color     = {prim, prim,  sec, 1.0f};
+    closed_color   = { sec, prim, prim, 1.0f};
 
     state = EDITING;
-
     scalar = 1;
-    show_grid = true;
-
     sim_thread = nullptr;
 }
 
@@ -32,12 +31,11 @@ AStar::AStar(
     obstacle_color = { sec, prim,  sec, 1.0f};
     target_color   = { sec,  sec, prim, 1.0f};
     grid_color     = {0.0f, 0.0f, 0.0f, 1.0f};
+    open_color     = {prim, prim,  sec, 1.0f};
+    closed_color   = { sec, prim, prim, 1.0f};
 
     state = EDITING;
-
     scalar = 1;
-    show_grid = true;
-
     sim_thread = nullptr;
 }
 
@@ -51,10 +49,9 @@ void AStar::aStarPathfinding()
 {
     // Tie braker: 
     // https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#breaking-ties
-    float p = 0.2; 
+    float p = 0.1; 
 
     std::unordered_map<std::pair<i32, i32>, i32, pair_hash> gScore;
-    std::unordered_map<std::pair<i32, i32>, i32, pair_hash> fScore;
 
     std::unordered_map<std::pair<i32, i32>, std::pair<i32, i32>, pair_hash> parents;
 
@@ -166,6 +163,7 @@ void AStar::startSimulation()
 
     openSet.clear();
     closedSet.clear();
+    fScore.clear();
     final_path.clear();
 
     sim_thread = new std::thread( [this] { aStarPathfinding(); } );
@@ -344,4 +342,19 @@ void AStar::setObstacleColor(ImVec4 obstacle_color)
 void AStar::setGridColor(ImVec4 grid_color)
 {
     this->grid_color = grid_color;
+}
+
+void AStar::setOpenColor(ImVec4 open_color)
+{
+    this->open_color = open_color;
+}
+
+void AStar::setClosedColor(ImVec4 closed_color)
+{
+    this->closed_color = closed_color;
+}
+
+void AStar::setClosedColorStatic(bool isStatic)
+{
+    this->static_closedColor = isStatic;
 }

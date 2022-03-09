@@ -2,6 +2,7 @@
 #define VISUALIZATION_HPP
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl.h"
@@ -44,12 +45,10 @@ class Visualization {
         // Menu Bar
         void MenuBar();
         void ResizeWindow();
-        void FileMenu();
         void EditMenu();
         void RunMenu();
         void GridMenu();
         void ColorMenu();
-        void AboutMenu();
 
         // Events
         void OnMouseButtonDown(const SDL_Event& e);
@@ -62,7 +61,12 @@ class Visualization {
         void OnRedo();
 
         // Draw 
-        void DrawGrid();
+        void DrawAStar();
+        void DrawObstacles(i32 dl);
+        void DrawState(i32 dl);
+        void DrawStartTarget(i32 dl);
+        void DrawGrid(i32 dl);
+
 
     public:
         Visualization();
@@ -71,5 +75,7 @@ class Visualization {
         void run();
 
 };
+
+ImVec4 HSL2RGB(double h, double s, double l);
 
 #endif //VISUALIZATION_HPP

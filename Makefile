@@ -1,5 +1,5 @@
 CXXFLAGS = -std=c++17
-LDXXFLAGS = `sdl2-config --cflags --libs` -lSDL2 -pthread
+LDXXFLAGS = `sdl2-config --cflags --libs` -lSDL2 -lSDL2_image -pthread
 
 BIN = bin/A-Star
 SRC = src/*.cpp src/**/*.cpp
