@@ -26,4 +26,4 @@ cd aStar-pathfinding-visualization && make
 ```
 
 ## License
-This software is licensed under the MIT License, see [LICENSE.txt](https://github.com/maarcosrmz/aStar-pathfinding-visualization/blob/master/LICENSE.txt) for more information.
+This software is licensed under the MIT License, see [LICENSE.txt](https://github.com/maarcosrmz/aStar-pathfinding-visualization/blob/main/LICENSE.txt) for more information.
