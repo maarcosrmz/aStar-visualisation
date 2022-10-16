@@ -513,7 +513,6 @@ void Visualization::DrawState(i32 dl)
     if (state == SIMULATING || state == FINISHED) {
         auto openSet   = aStar.getOpenSet();
         auto closedSet = aStar.getClosedSet();
-        auto fScore    = aStar.getFScore();
 
         color = aStar.getOpenColor();
         SDL_SetRenderDrawColor(renderer, 
@@ -531,8 +530,9 @@ void Visualization::DrawState(i32 dl)
             if (aStar.closedColorIsStatic()) {
                 color = aStar.getClosedColor();
             } else {
+                i32 heuristic = aStar.getHeuristic(tile, aStar.getTarget());
                 color = HSL2RGB(
-                        (fScore[tile] / aStar.getScalar()) % 360, 
+                        (heuristic / aStar.getScalar()) % 360, 
                         1.0f, 
                         0.5f);
             }

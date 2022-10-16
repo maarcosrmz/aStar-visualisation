@@ -27,6 +27,10 @@ enum Tiles {
 class AStar {
 
     private:
+        // Tie braker: 
+        // https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#breaking-ties
+        static constexpr float TIE_BREAKER = 0.1f;
+
         // Attributes
         bool show_grid = true;
         
@@ -58,7 +62,7 @@ class AStar {
         ImVec4 open_color;
         ImVec4 closed_color;
 
-        bool static_closedColor = true;
+        bool static_closedColor = false;
 
         std::thread* sim_thread;
 
@@ -72,7 +76,7 @@ class AStar {
                 const std::pair<i32, i32> &current);
         i32 heuristic(
                 const std::pair<i32, i32> &a, 
-                const std::pair<i32, i32> &b);
+                const std::pair<i32, i32> &b) const;
 
     public:
         AStar();
@@ -162,6 +166,11 @@ class AStar {
             getClosedSet() const { return closedSet; }
         inline std::unordered_map<std::pair<i32, i32>, i32, pair_hash> 
             getFScore() const { return fScore; }
+
+        inline i32 
+            getHeuristic(const std::pair<i32, i32> &a, 
+                         const std::pair<i32, i32> &b) const 
+                        { return heuristic(a, b); }
 
 };
 

@@ -47,10 +47,6 @@ AStar::~AStar()
 
 void AStar::aStarPathfinding()
 {
-    // Tie braker: 
-    // https://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html#breaking-ties
-    float p = 0.1; 
-
     std::unordered_map<std::pair<i32, i32>, i32, pair_hash> gScore;
 
     std::unordered_map<std::pair<i32, i32>, std::pair<i32, i32>, pair_hash> parents;
@@ -76,7 +72,7 @@ void AStar::aStarPathfinding()
                 continue;
             } else if (fScore.find(square) == fScore.end()) {
                 gScore[square] = gScore[current] + heuristic(current, square);
-                fScore[square] = gScore[square]  + heuristic(square, target) * (1.0f + p);
+                fScore[square] = gScore[square]  + heuristic(square, target) * (1.0f + TIE_BREAKER);
                 parents[square] = current;
 
                 openSet.insert(std::pair<i32, std::pair<i32, i32>>(fScore[square], square));
@@ -86,7 +82,7 @@ void AStar::aStarPathfinding()
                     openSet.erase(std::pair<i32, std::pair<i32, i32>>(fScore[square], square)); 
 
                     gScore[square] = new_gScore;
-                    fScore[square] = gScore[square] + heuristic(square, target) * (1.0f * p);
+                    fScore[square] = gScore[square] + heuristic(square, target) * (1.0f * TIE_BREAKER);
                     parents[square] = current;
 
                     openSet.insert(std::pair<i32, std::pair<i32, i32>>(fScore[square], square)); 
@@ -130,7 +126,7 @@ std::vector<std::pair<i32, i32>> AStar::getAdjacentSquares(
     return adjacentSquares; 
 }
 
-i32 AStar::heuristic(const std::pair<i32, i32> &a, const std::pair<i32, i32> &b) {
+i32 AStar::heuristic(const std::pair<i32, i32> &a, const std::pair<i32, i32> &b) const {
     i32 dx = abs(a.first  - b.first);
     i32 dy = abs(a.second - b.second);
     
