@@ -3,7 +3,7 @@
 
 #include <SDL2/SDL.h>
 
-#include "imgui/imgui.h"
+#include "../imgui/imgui.h"
 
 #include "Util.hpp"
 

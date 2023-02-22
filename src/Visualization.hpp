@@ -4,9 +4,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_sdl.h"
-#include "imgui/imgui_impl_sdlrenderer.h"
+#include "../imgui/imgui.h"
+#include "../imgui/backends/imgui_impl_sdl2.h"
+#include "../imgui/backends/imgui_impl_sdlrenderer.h"
 
 #include "Util.hpp"
 #include "AStar.hpp"
